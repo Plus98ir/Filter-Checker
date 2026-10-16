@@ -133,6 +133,7 @@
   details { margin-top: 6px; }
   summary { cursor: pointer; color: var(--muted); font-size: 12px; font-family: var(--font-fa); }
   html[lang="en"] summary { font-family: var(--font-en); }
+  html[dir="rtl"] summary { direction: rtl; text-align: right; }
   pre { direction: ltr; text-align: left; font-size: 12px; overflow-x: auto; background: var(--input);
         padding: 10px; border-radius: 10px; max-height: 320px; }
 
@@ -147,8 +148,24 @@
     nav { padding: 10px 16px; gap: 8px; }
     .brand span, .mode { display: none; }
     main { padding: 18px 16px 40px; }
-    th, td { padding: 10px; }
-    .hide-sm { display: none; }
+
+    /* results: har domain ye card, ta matn-e toolani-e "mahal-e ekhtelal" ja beshe */
+    .results { padding: 0; }
+    .results thead { display: none; }
+    .results table, .results tbody { display: block; }
+    .results tr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 14px 16px;
+                  border-bottom: 1px solid var(--stroke2); }
+    .results tr:last-child { border-bottom: 0; }
+    .results td { display: block; padding: 0; border: 0; min-width: 0; overflow-wrap: anywhere; }
+    .results td:empty { display: none; }
+    .results td.dom { grid-column: 1; font-size: 15px; font-weight: 600; }
+    html[dir="rtl"] .results td.dom, html[dir="rtl"] .results td [dir="ltr"] { text-align: right; }
+    .results td.where.none { display: none; }
+    .results td.verdict { grid-column: 2; justify-self: end; }
+    .results td.where { grid-column: 1 / -1; padding: 10px 12px; border-radius: 12px; background: var(--input); }
+    .results td.cell { font-size: 13px; }
+    .results td.cell::before { content: attr(data-label); display: block; font-size: 11px; color: var(--muted); margin-bottom: 1px; }
+    .results tr:has(details[open]) td.dom { grid-column: 1 / -1; }
   }
 </style>
 <!-- GoatCounter: privacy-friendly visit stats, counted per project -->
@@ -348,10 +365,10 @@ const ipCell = p => !p ? mark(null, "—")
   : p.error === "timeout" ? mark(false, "timeout")
   : mark(null, t("ipFast"));
 
-// [header key, cell fn, hide on mobile]
+// [header key, cell fn]
 const COLUMNS = {
-  local: [["hDomain"], ["hVerdict"], ["hWhere"], ["DNS", dnsCell], ["TCP", tcpCell, true], ["TLS / SNI", tlsCell], ["HTTP", httpCell, true]],
-  web:   [["hDomain"], ["hVerdict"], ["hWhere"], ["DNS (DoH)", dohCell], ["hSite", r => probeCell(r.site)], ["hIp", r => ipCell(r.ip), true]],
+  local: [["hDomain"], ["hVerdict"], ["hWhere"], ["DNS", dnsCell], ["TCP", tcpCell], ["TLS / SNI", tlsCell], ["HTTP", httpCell]],
+  web:   [["hDomain"], ["hVerdict"], ["hWhere"], ["DNS (DoH)", dohCell], ["hSite", r => probeCell(r.site)], ["hIp", r => ipCell(r.ip)]],
 };
 
 function issuesCell(r) {
@@ -366,23 +383,23 @@ function issuesCell(r) {
 }
 
 function renderHead() {
-  $("#head").innerHTML = COLUMNS[mode].map(([k, , sm]) => `<th${sm ? ' class="hide-sm"' : ""}>${esc(t(k))}</th>`).join("");
+  $("#head").innerHTML = COLUMNS[mode].map(([k]) => `<th>${esc(t(k))}</th>`).join("");
 }
 
 function renderRow(row) {
   const { tr, domain, result: r } = row, cols = COLUMNS[mode], span = cols.length - 1;
   if (!r) {
-    tr.innerHTML = `<td class="dom">${esc(domain)}</td><td><span class="badge pending">${t("checking")}</span></td><td colspan="${span - 1}"></td>`;
+    tr.innerHTML = `<td class="dom">${esc(domain)}</td><td class="verdict"><span class="badge pending">${t("checking")}</span></td><td colspan="${span - 1}"></td>`;
     return;
   }
-  if (r.error) { tr.innerHTML = `<td class="dom">${esc(domain)}</td><td colspan="${span}">${mark(false, r.error)}</td>`; return; }
+  if (r.error) { tr.innerHTML = `<td class="dom">${esc(domain)}</td><td class="where" colspan="${span}">${mark(false, r.error)}</td>`; return; }
   const v = VERDICT_CLS[r.verdict] ? r.verdict : "unknown";
   tr.innerHTML = `
     <td class="dom">${esc(r.domain)}
       <details><summary>${t("details")} · ${r.elapsed_ms}ms</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details></td>
-    <td><span class="badge ${VERDICT_CLS[v]}">${t("v_" + v)}</span></td>
-    <td>${issuesCell(r)}</td>` +
-    cols.slice(3).map(([, fn, sm]) => `<td${sm ? ' class="hide-sm"' : ""}>${fn(r)}</td>`).join("");
+    <td class="verdict"><span class="badge ${VERDICT_CLS[v]}">${t("v_" + v)}</span></td>
+    <td class="where${r.issues.length ? "" : " none"}">${issuesCell(r)}</td>` +
+    cols.slice(3).map(([k, fn]) => `<td class="cell" data-label="${esc(t(k))}">${fn(r)}</td>`).join("");
 }
 
 /* ===== web-mode checks (faghat browser) ===== */
