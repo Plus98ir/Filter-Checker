@@ -2,6 +2,8 @@
 Newest on top. Move finished items here from TASKS.md.
 
 ## 2026-10-16
+- Mobile (<=640px): results table becomes one card per domain (domain + result on top, interference in a full-width box, details as a labelled 2-column grid); RTL alignment fixed for domain, IPs and the details label. Commit d21b2bd, live.
+- Removed Claude co-author trailers: this repo (amended) and Smart-Caddy (last 4 commits rewritten, v1.6.1 tag moved, release kept). Claude attribution now off in ~/.claude/settings.json.
 - Glass theme (dark + light), FA/EN switch (`?lang=fa|en`), full-width layout.
 - PWA: manifest, service worker, icons (icon.svg → PNGs), install button + iOS hint; web mode with browser-only checks.
 - "Interference" column: layer (DNS/IP/SNI/TLS/HTTP) + how (timeout, RST, mid-handshake drop, refused, poison, block page). TLS-on-IP case split out from the old "unreachable".
