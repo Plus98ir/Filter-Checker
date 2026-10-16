@@ -1,5 +1,7 @@
 # Filter Checker
 
+<a href="https://hits.sh/github.com/Plus98ir/Filter-Checker/"><img src="https://hits.sh/github.com/Plus98ir/Filter-Checker.svg?style=for-the-badge&label=views&color=2563eb" alt="Views"></a>
+
 Tashkhis inke ye site filter shode ya na. Faghat Python 3.10+ lazem dare (bedune pip install).
 
 ```
