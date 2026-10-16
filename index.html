@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="fa" dir="rtl" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Filter Checker</title>
+<meta name="description" content="Check whether a website is filtered and where: DNS, IP, SNI, TLS or HTTP.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#070a14">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Filter Checker">
+<meta property="og:title" content="Filter Checker">
+<meta property="og:description" content="Is a website filtered? Find out where: DNS, IP, SNI, TLS or HTTP.">
+<meta property="og:image" content="https://plus98ir.dpdns.org/Filter-Checker/icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ===== glass tokens: dark is the base, light overrides ===== */
+  :root {
+    --bg1: #070a14; --bg2: #0c1428;
+    --blob1: rgba(45, 212, 191, .30); --blob2: rgba(96, 165, 250, .32); --blob3: rgba(167, 139, 250, .28);
+    --glass: rgba(255, 255, 255, .055); --glass2: rgba(255, 255, 255, .09);
+    --stroke: rgba(255, 255, 255, .11); --stroke2: rgba(255, 255, 255, .18);
+    --input: rgba(0, 0, 0, .28);
+    --text: #eef3fb; --muted: #9aa8c0;
+    --accent: #60a5fa; --grad: linear-gradient(100deg, #2dd4bf, #60a5fa 55%, #a78bfa);
+    --open: #4ade80; --open-bg: rgba(74, 222, 128, .14);
+    --blocked: #fb7185; --blocked-bg: rgba(251, 113, 133, .15);
+    --warn: #fbbf24; --warn-bg: rgba(251, 191, 36, .14);
+    --shadow: 0 18px 50px -20px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .07);
+    --font-fa: Vazirmatn, Tahoma, "Segoe UI", sans-serif;
+    --font-en: Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  :root[data-theme="light"] {
+    --bg1: #eef3fb; --bg2: #e2eaf8;
+    --blob1: rgba(45, 212, 191, .40); --blob2: rgba(96, 165, 250, .42); --blob3: rgba(167, 139, 250, .38);
+    --glass: rgba(255, 255, 255, .55); --glass2: rgba(255, 255, 255, .75);
+    --stroke: rgba(255, 255, 255, .75); --stroke2: rgba(15, 23, 42, .12);
+    --input: rgba(255, 255, 255, .6);
+    --text: #0b1222; --muted: #526079;
+    --accent: #2563eb; --grad: linear-gradient(100deg, #0d9488, #2563eb 55%, #7c3aed);
+    --open: #15803d; --open-bg: rgba(22, 163, 74, .13);
+    --blocked: #be123c; --blocked-bg: rgba(225, 29, 72, .11);
+    --warn: #b45309; --warn-bg: rgba(217, 119, 6, .13);
+    --shadow: 0 18px 50px -24px rgba(30, 41, 59, .35), inset 0 1px 0 rgba(255, 255, 255, .9);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; min-height: 100vh; color: var(--text); background: var(--bg1);
+         font: 15px/1.65 var(--font-fa); }
+  html[lang="en"] body { font-family: var(--font-en); }
+  body::before { content: ""; position: fixed; inset: -10%; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(38% 42% at 12% 18%, var(--blob1), transparent 70%),
+      radial-gradient(34% 40% at 88% 12%, var(--blob2), transparent 70%),
+      radial-gradient(44% 46% at 62% 92%, var(--blob3), transparent 70%),
+      linear-gradient(160deg, var(--bg1), var(--bg2)); }
+
+  .glass { background: var(--glass); border: 1px solid var(--stroke); border-radius: 18px;
+           backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+           box-shadow: var(--shadow); }
+
+  /* ===== nav ===== */
+  nav { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px;
+        padding: 10px 32px; padding-top: max(10px, env(safe-area-inset-top));
+        border-radius: 0; border-width: 0 0 1px; }
+  .brand { display: flex; align-items: center; gap: 10px; font: 700 17px/1 var(--font-en); letter-spacing: -.01em;
+           color: inherit; text-decoration: none; }
+  .brand img { width: 30px; height: 30px; }
+  .spacer { flex: 1; }
+  .mode { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--stroke2);
+          color: var(--muted); white-space: nowrap; }
+  .mode.local { color: var(--open); background: var(--open-bg); border-color: transparent; }
+  .mode.web { color: var(--accent); background: var(--glass2); }
+  .seg { display: flex; padding: 3px; border-radius: 10px; background: var(--input); border: 1px solid var(--stroke2); }
+  .seg button { background: none; color: var(--muted); padding: 4px 10px; border-radius: 7px; font: 600 12px/1.4 var(--font-en); }
+  .seg button[data-lang="fa"] { font: 700 13px/1.3 var(--font-fa); }
+  .seg button[aria-pressed="true"] { background: var(--glass2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .icon-btn { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border-radius: 10px;
+              background: var(--input); border: 1px solid var(--stroke2); color: var(--text); }
+  .icon-btn svg { width: 17px; height: 17px; }
+  :root[data-theme="light"] .moon, :root:not([data-theme="light"]) .sun { display: none; }
+
+  /* ===== layout: full width ===== */
+  main { width: 100%; padding: 28px 32px 48px; }
+  header { margin-bottom: 22px; }
+  h1 { margin: 0 0 6px; font-size: clamp(24px, 3vw, 34px); line-height: 1.25; font-weight: 800; letter-spacing: -.01em; }
+  h1 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--muted); margin: 0; max-width: 900px; }
+  .top { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+  .card { padding: 18px; }
+  .card h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); }
+
+  textarea { width: 100%; min-height: 150px; resize: vertical; direction: ltr; text-align: left;
+             font: 14px/1.55 var(--mono); background: var(--input); color: var(--text);
+             border: 1px solid var(--stroke2); border-radius: 12px; padding: 12px; outline: none; }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .row { display: flex; gap: 12px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  button { border: 0; cursor: pointer; font: inherit; }
+  .primary { background: var(--grad); color: #fff; border-radius: 12px; padding: 10px 28px; font-weight: 600;
+             box-shadow: 0 8px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent); }
+  .primary:disabled { opacity: .5; cursor: default; }
+  .ghost { background: var(--glass2); color: var(--text); border: 1px solid var(--stroke2); border-radius: 10px;
+           padding: 6px 12px; font-size: 13px; }
+  .progress { color: var(--muted); font-size: 13px; }
+  .note { color: var(--muted); font-size: 13.5px; margin: 0 0 10px; }
+  .note a { color: var(--accent); }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+
+  /* ===== results ===== */
+  .results { margin-top: 18px; padding: 6px 0; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 12px 16px; border-bottom: 1px solid var(--stroke2); text-align: start; vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { color: var(--muted); font-weight: 500; font-size: 12.5px; white-space: nowrap; }
+  td.dom { direction: ltr; text-align: left; font-family: var(--mono); font-size: 14px; }
+  .badge { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .open { color: var(--open); background: var(--open-bg); }
+  .blocked { color: var(--blocked); background: var(--blocked-bg); }
+  .warn { color: var(--warn); background: var(--warn-bg); }
+  .pending { color: var(--muted); background: var(--glass2); }
+  .ok { color: var(--open); } .bad { color: var(--blocked); } .mid { color: var(--muted); }
+  .small { font-size: 12px; }
+  .issue + .issue { margin-top: 6px; }
+  .issue b { color: var(--blocked); font-weight: 700; }
+  details { margin-top: 6px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 12px; font-family: var(--font-fa); }
+  html[lang="en"] summary { font-family: var(--font-en); }
+  pre { direction: ltr; text-align: left; font-size: 12px; overflow-x: auto; background: var(--input);
+        padding: 10px; border-radius: 10px; max-height: 320px; }
+
+  .legend { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .legend p { margin: 0; padding: 14px 16px; font-size: 13.5px; color: var(--muted); }
+  .legend b { color: var(--text); display: block; margin-bottom: 2px; }
+  footer { margin-top: 26px; color: var(--muted); font-size: 13px; text-align: center; }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 900px) { .top { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) {
+    nav { padding: 10px 16px; gap: 8px; }
+    .brand span, .mode { display: none; }
+    main { padding: 18px 16px 40px; }
+    th, td { padding: 10px; }
+    .hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+<nav class="glass">
+  <a class="brand" href="./"><img src="icon.svg" alt=""><span>Filter Checker</span></a>
+  <span class="mode" id="mode">…</span>
+  <span class="spacer"></span>
+  <button class="ghost" id="install" hidden data-i="install"></button>
+  <div class="seg" role="group" aria-label="Language">
+    <button data-lang="fa">فا</button><button data-lang="en">EN</button>
+  </div>
+  <button class="icon-btn" id="theme" aria-label="Theme">
+    <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
+</nav>
+
+<main>
+  <header>
+    <h1 data-i="title"></h1>
+    <p class="sub" data-i="sub"></p>
+  </header>
+
+  <div class="top">
+    <section class="glass card">
+      <h2 data-i="domainsLabel"></h2>
+      <textarea id="domains" spellcheck="false" autocapitalize="off" autocomplete="off">google.com
+twitter.com
+youtube.com
+instagram.com
+telegram.org
+wikipedia.org
+github.com</textarea>
+      <div class="row">
+        <button class="primary" id="run" disabled data-i="run"></button>
+        <span class="progress" id="progress"></span>
+      </div>
+    </section>
+    <section class="glass card">
+      <h2 id="modeTitle"></h2>
+      <p class="note" id="modeNote"></p>
+      <p class="note"><a href="https://github.com/Plus98ir/Filter-Checker" target="_blank" rel="noopener" data-i="source"></a></p>
+      <div class="hint" id="iosHint" hidden data-i="iosHint"></div>
+    </section>
+  </div>
+
+  <div class="glass results" id="resultsCard" hidden>
+    <table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <footer><span data-i="built"></span> <a href="https://plus98ir.dpdns.org/" target="_blank" rel="noopener">PLUS98IR</a></footer>
+</main>
+
+<script>
+const T = {
+  fa: {
+    title: 'بررسی <span>فیلترینگ</span> سایت',
+    sub: "تشخیص اینکه سایت فیلتر است یا نه، و اختلال دقیقاً روی کدام لایه است: DNS، IP، SNI، TLS یا HTTP.",
+    domainsLabel: "دامنه‌ها (هر خط یکی)", run: "بررسی", of: "از", install: "نصب برنامه",
+    modeLocal: "حالت کامل", modeWeb: "حالت وب",
+    noteLocal: "تست‌ها با server.py از روی همین کامپیوتر انجام می‌شود: DNS سیستم، اتصال TCP، فیلتر SNI و صفحه‌ی بلاک HTTP.",
+    noteWeb: "مرورگر اجازه‌ی تست مستقیم TCP و SNI را نمی‌دهد. این حالت نشان می‌دهد سایت از همین دستگاه باز می‌شود یا نه، و اگر نه، مسدودی روی IP است یا روی نام دامنه (DNS/SNI). برای تشخیص دقیق لایه، server.py را روی کامپیوتر اجرا کنید.",
+    source: "سورس و نسخه‌ی کامل در GitHub", built: "ساخته‌شده توسط",
+    iosHint: "نصب روی آیفون: دکمه‌ی Share و بعد Add to Home Screen",
+    hDomain: "دامنه", hVerdict: "نتیجه", hWhere: "محل اختلال", hSite: "اتصال HTTPS", hIp: "تست IP",
+    v_open: "باز است", v_blocked: "فیلتر است", v_nxdomain: "دامنه وجود ندارد", v_unknown: "نامشخص",
+    checking: "در حال بررسی…", details: "جزئیات", serverDown: "سرور در دسترس نیست",
+    poisoned: "مسموم", error: "خطا", diffDoh: "متفاوت با DoH", healthy: "سالم",
+    ctrlOk: "کنترل OK", ctrlFail: "کنترل هم قطع", blockpage: "صفحه‌ی بلاک", reachable: "در دسترس",
+    failed: "قطع / رد", noAnswer: "جواب نداد", ipFast: "جواب سریع",
+    layer_name: "DNS / SNI", nameNote: "خود IP جواب داد ولی سایت با نامش نه؛ احتمالاً مسدودی روی نام دامنه است",
+    layer_iptls: "IP / TLS", iptlsNote: "خود IP هم (بدون نام دامنه) جواب نمی‌دهد",
+    layer_conn: "لایه نامشخص", connNote: "هم سایت و هم IP سریع قطع می‌شوند؛ مرورگر نمی‌تواند لایه را جدا کند. برای تشخیص دقیق server.py را اجرا کنید.",
+    how_poison: "جواب جعلی DNS", how_nxdomain: "DNS سیستم دامنه را پیدا نمی‌کند",
+    how_timeout: "بسته‌ها دور ریخته می‌شوند (timeout)", how_reset: "اتصال با RST قطع می‌شود",
+    how_eof: "اتصال وسط handshake قطع می‌شود", how_refused: "اتصال رد می‌شود",
+    how_blockpage: "ریدایرکت به صفحه‌ی بلاک", how_failed: "اتصال قطع یا رد می‌شود",
+    legendLocal: [
+      ["DNS", "جواب DNS سیستم با DoH (Cloudflare / Google) مقایسه می‌شود؛ IP مثل 10.10.34.x یعنی DNS مسموم شده."],
+      ["IP", "اتصال TCP به IP درست روی پورت 443؛ اگر وصل نشود یعنی خود IP بسته شده."],
+      ["SNI", "handshake با نام سایت و با نام کنترلی (example.com) روی همان IP؛ اگر فقط نام سایت قطع شود یعنی فیلتر SNI."],
+      ["TLS", "TCP وصل می‌شود ولی handshake با هر نامی قطع می‌شود؛ یعنی TLS روی همین IP مختل شده."],
+      ["HTTP", "درخواست روی پورت 80 و جستجوی صفحه‌ی peyvandha."],
+      ["نحوه‌ی اختلال", "timeout یعنی بسته‌ها بی‌صدا دور ریخته می‌شوند؛ RST یعنی اتصال عمداً قطع می‌شود؛ قطع وسط handshake یعنی بعد از ارسال نام سایت بسته می‌شود."],
+    ],
+    legendWeb: [
+      ["DNS (DoH)", "آدرس واقعی سایت از DoH (Cloudflare / Google) گرفته می‌شود، بدون دخالت DNS اپراتور."],
+      ["اتصال HTTPS", "مرورگر مستقیم سایت را باز می‌کند؛ اگر جواب بیاید یعنی سایت از همین دستگاه باز است."],
+      ["تست IP", "اگر سایت باز نشد، خود IP واقعی (بدون نام دامنه) امتحان می‌شود. سایت timeout بدهد ولی IP سریع جواب بدهد یعنی مسدودی روی نام است (DNS یا SNI)؛ IP هم timeout بدهد یعنی خود IP (یا TLS روی آن) بسته شده."],
+      ["نحوه‌ی اختلال", "timeout یعنی بسته‌ها بی‌صدا دور ریخته می‌شوند؛ قطع / رد یعنی اتصال سریع بسته می‌شود."],
+    ],
+  },
+  en: {
+    title: 'Website <span>filtering</span> check',
+    sub: "Find out whether a website is filtered, and exactly which layer the interference is on: DNS, IP, SNI, TLS or HTTP.",
+    domainsLabel: "Domains (one per line)", run: "Check", of: "of", install: "Install app",
+    modeLocal: "Full mode", modeWeb: "Web mode",
+    noteLocal: "Tests run from this computer through server.py: system DNS, TCP connect, SNI filtering and the HTTP block page.",
+    noteWeb: "Browsers can't run raw TCP or SNI tests. This mode shows whether the site opens from this device and, if not, whether the block is on the IP or on the domain name (DNS/SNI). For an exact per-layer diagnosis, run server.py on a computer.",
+    source: "Source and full version on GitHub", built: "Built by",
+    iosHint: "Install on iPhone: tap Share, then Add to Home Screen",
+    hDomain: "Domain", hVerdict: "Result", hWhere: "Interference", hSite: "HTTPS connect", hIp: "IP test",
+    v_open: "Open", v_blocked: "Filtered", v_nxdomain: "Domain doesn't exist", v_unknown: "Unknown",
+    checking: "Checking…", details: "Details", serverDown: "Server unreachable",
+    poisoned: "Poisoned", error: "Error", diffDoh: "Differs from DoH", healthy: "OK",
+    ctrlOk: "control OK", ctrlFail: "control fails too", blockpage: "Block page", reachable: "Reachable",
+    failed: "reset / refused", noAnswer: "no answer", ipFast: "fast answer",
+    layer_name: "DNS / SNI", nameNote: "The IP answered but the site by name didn't; the block is probably on the domain name",
+    layer_iptls: "IP / TLS", iptlsNote: "The IP itself doesn't answer either (without the domain name)",
+    layer_conn: "Layer unclear", connNote: "Both the site and its IP are cut quickly; a browser can't tell the layer apart. Run server.py for an exact diagnosis.",
+    how_poison: "fake DNS answer", how_nxdomain: "system DNS can't find the domain",
+    how_timeout: "packets are dropped (timeout)", how_reset: "connection is cut with RST",
+    how_eof: "connection drops mid-handshake", how_refused: "connection refused",
+    how_blockpage: "redirects to the block page", how_failed: "connection is cut or refused",
+    legendLocal: [
+      ["DNS", "The system DNS answer is compared with DoH (Cloudflare / Google); an IP like 10.10.34.x means DNS is poisoned."],
+      ["IP", "TCP connect to the real IP on port 443; if it fails, the IP itself is blocked."],
+      ["SNI", "TLS handshake with the site name and a control name (example.com) on the same IP; if only the site name fails, it's SNI filtering."],
+      ["TLS", "TCP connects but the handshake fails with any name; TLS is disrupted on this IP."],
+      ["HTTP", "Request on port 80, looking for the peyvandha block page."],
+      ["How", "timeout = packets silently dropped; RST = connection deliberately reset; mid-handshake drop = closed right after the site name is sent."],
+    ],
+    legendWeb: [
+      ["DNS (DoH)", "The site's real address comes from DoH (Cloudflare / Google), bypassing the ISP's DNS."],
+      ["HTTPS connect", "The browser opens the site directly; an answer means the site is open from this device."],
+      ["IP test", "If the site fails, its real IP is tried without the domain name. Site times out but the IP answers fast → the block is on the name (DNS or SNI); the IP times out too → the IP itself (or TLS on it) is blocked."],
+      ["How", "timeout = packets silently dropped; reset / refused = the connection is closed quickly."],
+    ],
+  },
+};
+
+const LAYER = { dns: "DNS", http: "HTTP", ip: "IP", sni: "SNI", tls: "TLS" };
+const VERDICT_CLS = { open: "open", blocked: "blocked", nxdomain: "warn", unknown: "warn" };
+const CONCURRENCY = 4;
+const WEB_TIMEOUT = 8000;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const store = (k, v) => { try { return v === undefined ? localStorage.getItem(k) : localStorage.setItem(k, v); } catch { return null; } };
+
+const langParam = new URLSearchParams(location.search).get("lang");
+let lang = T[langParam] ? langParam : store("fc_lang") || (/^fa\b/i.test(navigator.language) ? "fa" : "en");
+let mode = null;              // "local" (server.py) | "web" (faghat browser, PWA)
+let rows = [];                // [{ domain, tr, result }]
+const t = k => T[lang][k] ?? k;
+const mark = (ok, text) => `<span class="${ok === null ? "mid" : ok ? "ok" : "bad"}">${esc(text)}</span>`;
+const ipsLine = ips => ips.length ? `<div class="mid small" dir="ltr">${esc(ips.slice(0, 2).join(", "))}</div>` : "";
+
+/* ===== cells: full mode (server.py) ===== */
+function dnsCell(r) {
+  const s = r.dns.system, d = r.dns.doh;
+  if (s.bogus.length) return mark(false, t("poisoned") + ": " + s.bogus.join(", "));
+  if (!s.ok) return mark(d.ips.length ? false : null, t("error") + ": " + s.error);
+  const differs = d.ips.length && !s.ips.some(ip => d.ips.includes(ip));
+  return (differs ? mark(null, t("diffDoh")) : mark(true, t("healthy"))) + ipsLine(s.ips);
+}
+function tcpCell(r) {
+  const v = Object.values(r.tcp);
+  if (!v.length) return mark(null, "—");
+  const ok = v.find(x => x.ok);
+  return ok ? mark(true, ok.ms + "ms") : mark(false, v[0].error);
+}
+function tlsCell(r) {
+  const tl = Object.values(r.tls), c = Object.values(r.tls_control);
+  if (!tl.length) return mark(null, "—");
+  const ok = tl.find(x => x.ok);
+  if (ok) return mark(true, ok.version || "ok");
+  return mark(false, tl[0].error + ` (${c.some(x => x.ok) ? t("ctrlOk") : t("ctrlFail")})`);
+}
+function httpCell(r) {
+  const h = [r.http.system, r.http.direct_ip].filter(Boolean);
+  if (h.some(x => x.blockpage)) return mark(false, t("blockpage"));
+  const ok = h.find(x => x.ok);
+  return ok ? mark(null, ok.status) : mark(null, h[0]?.error || "—");
+}
+
+/* ===== cells: web mode ===== */
+function dohCell(r) {
+  if (r.doh.nxdomain) return mark(null, "NXDOMAIN");
+  if (r.doh.ips.length) return mark(true, r.doh.provider) + ipsLine(r.doh.ips);
+  return mark(null, t("noAnswer"));
+}
+const probeCell = p => !p ? mark(null, "—")
+  : p.ok ? mark(true, p.ms + "ms")
+  : mark(false, p.error === "timeout" ? "timeout" : t("failed"));
+const ipCell = p => !p ? mark(null, "—")
+  : p.ok ? mark(true, t("reachable"))
+  : p.error === "timeout" ? mark(false, "timeout")
+  : mark(null, t("ipFast"));
+
+// [header key, cell fn, hide on mobile]
+const COLUMNS = {
+  local: [["hDomain"], ["hVerdict"], ["hWhere"], ["DNS", dnsCell], ["TCP", tcpCell, true], ["TLS / SNI", tlsCell], ["HTTP", httpCell, true]],
+  web:   [["hDomain"], ["hVerdict"], ["hWhere"], ["DNS (DoH)", dohCell], ["hSite", r => probeCell(r.site)], ["hIp", r => ipCell(r.ip), true]],
+};
+
+function issuesCell(r) {
+  if (!r.issues.length) return mark(null, "—");
+  return r.issues.map(i => {
+    const name = LAYER[i.layer] || t("layer_" + i.layer);
+    const detail = T[lang][i.layer + "Note"] ?? i.detail;
+    const how = T[lang]["how_" + i.how] ?? i.how;
+    return `<div class="issue"><b>${esc(name)}</b> · ${esc(how)}` +
+      (detail ? `<div class="mid small">${esc(detail)}</div>` : "") + `</div>`;
+  }).join("");
+}
+
+function renderHead() {
+  $("#head").innerHTML = COLUMNS[mode].map(([k, , sm]) => `<th${sm ? ' class="hide-sm"' : ""}>${esc(t(k))}</th>`).join("");
+}
+
+function renderRow(row) {
+  const { tr, domain, result: r } = row, cols = COLUMNS[mode], span = cols.length - 1;
+  if (!r) {
+    tr.innerHTML = `<td class="dom">${esc(domain)}</td><td><span class="badge pending">${t("checking")}</span></td><td colspan="${span - 1}"></td>`;
+    return;
+  }
+  if (r.error) { tr.innerHTML = `<td class="dom">${esc(domain)}</td><td colspan="${span}">${mark(false, r.error)}</td>`; return; }
+  const v = VERDICT_CLS[r.verdict] ? r.verdict : "unknown";
+  tr.innerHTML = `
+    <td class="dom">${esc(r.domain)}
+      <details><summary>${t("details")} · ${r.elapsed_ms}ms</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details></td>
+    <td><span class="badge ${VERDICT_CLS[v]}">${t("v_" + v)}</span></td>
+    <td>${issuesCell(r)}</td>` +
+    cols.slice(3).map(([, fn, sm]) => `<td${sm ? ' class="hide-sm"' : ""}>${fn(r)}</td>`).join("");
+}
+
+/* ===== web-mode checks (faghat browser) ===== */
+// Avval ruye IP ta DNS-e operator dar resolve-e khod-e DoH dakhalat nakone
+const DOH = [
+  ["Cloudflare", n => `https://1.1.1.1/dns-query?name=${n}&type=A`, { accept: "application/dns-json" }],
+  ["Google", n => `https://8.8.8.8/resolve?name=${n}&type=A`, {}],
+  ["Cloudflare", n => `https://cloudflare-dns.com/dns-query?name=${n}&type=A`, { accept: "application/dns-json" }],
+  ["Google", n => `https://dns.google/resolve?name=${n}&type=A`, {}],
+];
+
+function withTimeout(ms) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms);
+  return { signal: ctl.signal, done: () => { clearTimeout(timer); ctl.abort(); } };
+}
+
+async function dohResolve(domain) {
+  const tries = DOH.map(async ([provider, url, headers]) => {
+    const to = withTimeout(WEB_TIMEOUT);
+    try {
+      const res = await fetch(url(encodeURIComponent(domain)), { headers, cache: "no-store", signal: to.signal });
+      const data = await res.json();
+      const ips = [...new Set((data.Answer || []).filter(a => a.type === 1).map(a => a.data))].sort();
+      if (!ips.length && data.Status !== 3) throw new Error("empty");
+      return { ok: true, provider, ips, nxdomain: data.Status === 3 };
+    } finally { to.done(); }
+  });
+  try { return await Promise.any(tries); }
+  catch { return { ok: false, ips: [], nxdomain: false }; }
+}
+
+// no-cors: javab opaque e; faghat mifahmim TCP + TLS movafagh bud ya na
+async function probe(url) {
+  const to = withTimeout(WEB_TIMEOUT), t0 = performance.now();
+  try {
+    await fetch(url, { mode: "no-cors", cache: "no-store", credentials: "omit", signal: to.signal });
+    return { ok: true, ms: Math.round(performance.now() - t0) };
+  } catch {
+    return { ok: false, ms: Math.round(performance.now() - t0), error: to.signal.aborted ? "timeout" : "failed" };
+  } finally { to.done(); }
+}
+
+const isBogus = ip => /^(10|127|0)\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\.|^169\.254\./.test(ip);
+
+async function webCheck(raw) {
+  const started = performance.now();
+  let domain;
+  try { domain = new URL(raw.includes("://") ? raw : "http://" + raw).hostname; } catch { return { error: "invalid domain" }; }
+  const [doh, site] = await Promise.all([dohResolve(domain), probe(`https://${domain}/`)]);
+  const ips = doh.ips.filter(ip => !isBogus(ip));
+  // IP-e vaghei bedune esm-e domain (bedune SNI): cert-error-e sari yani IP baz e va moshkel ruye esm e
+  const ip = !site.ok && ips.length ? await probe(`https://${ips[0]}/`) : null;
+
+  // Browser "refused" ro az cert-error joda nemikone; faghat vaghti raftar-e IP ba esm fargh dare natije ghat'i e
+  const issues = [];
+  let verdict;
+  if (site.ok) verdict = "open";
+  else if (doh.nxdomain) verdict = "nxdomain";
+  else if (!ip) verdict = "unknown";
+  else {
+    verdict = "blocked";
+    // Browser TCP va TLS ro ba ham test mikone, pas timeout yani IP ya TLS ruye IP
+    if (ip.error === "timeout") issues.push({ layer: "iptls", how: "timeout" });
+    else if (ip.ok || site.error === "timeout") issues.push({ layer: "name", how: site.error });
+    else issues.push({ layer: "conn", how: "failed" });
+  }
+  return { domain, verdict, issues, elapsed_ms: Math.round(performance.now() - started), doh, site, ip, tested_ip: ip ? ips[0] : null };
+}
+
+async function localCheck(domain) {
+  try {
+    const res = await fetch("api/check?domain=" + encodeURIComponent(domain), { cache: "no-store" });
+    return await res.json();
+  } catch {
+    return { error: t("serverDown") };
+  }
+}
+
+/* ===== run ===== */
+async function run() {
+  const domains = [...new Set($("#domains").value.split(/\s+/).map(s => s.trim()).filter(Boolean))];
+  if (!domains.length) return;
+  const body = $("#body");
+  body.innerHTML = "";
+  $("#resultsCard").hidden = false;
+  $("#run").disabled = true;
+  renderHead();
+  rows = domains.map(domain => {
+    const row = { domain, tr: document.createElement("tr"), result: null };
+    body.appendChild(row.tr);
+    renderRow(row);
+    return row;
+  });
+
+  let done = 0, next = 0;
+  const progress = () => $("#progress").textContent = `${done} ${t("of")} ${rows.length}`;
+  progress();
+  const check = mode === "local" ? localCheck : webCheck;
+  async function worker() {
+    while (next < rows.length) {
+      const row = rows[next++];
+      row.result = await check(row.domain);
+      renderRow(row);
+      done++; progress();
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  $("#run").disabled = false;
+}
+
+/* ===== language / theme / mode ===== */
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === "fa" ? "rtl" : "ltr";
+  document.querySelectorAll("[data-i]").forEach(el => el.innerHTML = t(el.dataset.i));
+  document.querySelectorAll("[data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  if (!mode) return;
+  const local = mode === "local";
+  $("#mode").textContent = $("#modeTitle").textContent = t(local ? "modeLocal" : "modeWeb");
+  $("#modeNote").textContent = t(local ? "noteLocal" : "noteWeb");
+  $("#legend").innerHTML = t(local ? "legendLocal" : "legendWeb")
+    .map(([k, v]) => `<p class="glass"><b>${esc(k)}</b>${esc(v)}</p>`).join("");
+  if (rows.length) { renderHead(); rows.forEach(renderRow); }
+  const p = $("#progress").textContent.match(/^(\d+)\D+(\d+)$/);
+  if (p) $("#progress").textContent = `${p[1]} ${t("of")} ${p[2]}`;
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  document.querySelector('meta[name="theme-color"]').content = theme === "light" ? "#eef3fb" : "#070a14";
+}
+
+async function detectMode() {
+  const to = withTimeout(1500);
+  try {
+    const res = await fetch("api/ping", { cache: "no-store", signal: to.signal });
+    return res.status === 204 ? "local" : "web";
+  } catch { return "web"; } finally { to.done(); }
+}
+
+applyTheme(store("fc_theme") || "dark");
+applyLang();
+document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => {
+  lang = b.dataset.lang; store("fc_lang", lang); applyLang();
+}));
+$("#theme").addEventListener("click", () => {
+  const theme = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+  store("fc_theme", theme); applyTheme(theme);
+});
+$("#run").addEventListener("click", run);
+
+detectMode().then(m => {
+  mode = m;
+  $("#mode").className = "mode " + m;
+  applyLang();
+  $("#run").disabled = false;
+  if (m === "local") {
+    // Server bedune panjere ejra mishe; ba in ping-ha mifahme tab hanuz baz e
+    setInterval(() => fetch("api/ping", { cache: "no-store" }).catch(() => {}), 10000);
+    addEventListener("pagehide", () => navigator.sendBeacon("api/bye"));
+  }
+});
+
+/* ===== PWA ===== */
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+let installPrompt = null;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; $("#install").hidden = false; });
+addEventListener("appinstalled", () => { $("#install").hidden = true; });
+$("#install").addEventListener("click", async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt = null;
+  $("#install").hidden = true;
+});
+const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone) $("#iosHint").hidden = false;
+</script>
+</body>
+</html>
