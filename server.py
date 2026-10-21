@@ -18,6 +18,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
@@ -195,6 +196,57 @@ def http_probe(domain: str, ip: str | None = None) -> dict:
         return {"ok": False, "error": classify_error(e), "blockpage": False}
 
 
+# ---------- Hiddify panel: the domains and SNIs its users depend on ----------
+UUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
+
+class PanelError(Exception):
+    """str(e) is a key the page translates (hp_<key>)."""
+
+
+def hiddify_targets(link: str) -> list[dict]:
+    """[{domain, role}] from the panel's Domains page: role = panel (a domain users connect to), reality (a REALITY
+    SNI), fake (the SNI of a Telegram / ShadowTLS / FakeTLS proxy). `link` is the admin's own panel link
+    (https://host/<admin path>/<admin uuid>/...); the uuid is the API key. Nothing is stored."""
+    u = urllib.parse.urlsplit(str(link or "").strip())
+    parts = [x for x in u.path.split("/") if x]
+    at = next((i for i, x in enumerate(parts) if UUID_RE.fullmatch(x)), None)
+    if u.scheme not in ("http", "https") or not u.hostname or not at:
+        raise PanelError("link")
+    req = urllib.request.Request(f"{u.scheme}://{u.netloc}/{parts[0]}/api/v2/admin/domains-page/",
+                                 headers={"Hiddify-API-Key": parts[at].lower(), "Accept": "application/json",
+                                          "User-Agent": "Filter-Checker"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            rows = json.loads(r.read() or b"{}").get("domains")
+    except urllib.error.HTTPError as e:
+        raise PanelError("auth" if e.code in (401, 403) else "api") from None
+    except (urllib.error.URLError, OSError):
+        raise PanelError("unreachable") from None
+    except (ValueError, AttributeError):
+        raise PanelError("api") from None
+    if not isinstance(rows, list):
+        raise PanelError("api")
+    out: dict[str, str] = {}
+    for d in rows:
+        if not isinstance(d, dict):
+            continue
+        fake, mode = d.get("fake_mode") or "", d.get("mode") or ""
+        if fake == "reality":
+            names, role = [d.get("domain") or ""] + re.split(r"[\s,;]+", d.get("servernames") or ""), "reality"
+        elif fake in ("telegram", "shadowtls", "ssfaketls"):
+            names, role = [d.get("domain") or ""], "fake"
+        elif mode != "sub_link_only":
+            names, role = [d.get("domain") or ""], "panel"
+        else:
+            continue
+        for name in names:
+            name = name.strip().lower()
+            if name and "*" not in name and not re.fullmatch(r"[0-9.:]+", name):
+                out.setdefault(name, role)
+    return [{"domain": k, "role": v} for k, v in out.items()]
+
+
 def check(raw_domain: str) -> dict:
     domain = normalize(raw_domain)
     started = time.perf_counter()
@@ -279,9 +331,23 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         global last_seen
-        if urllib.parse.urlsplit(self.path).path == "/api/bye":
+        path = urllib.parse.urlsplit(self.path).path
+        if path == "/api/bye":
             last_seen = min(last_seen, time.monotonic() - IDLE_TIMEOUT + BYE_GRACE)
             self._send(204, b"", "text/plain")
+        elif path == "/api/hiddify/targets":
+            # Only this page may use it: our own Host (no DNS rebinding) and JSON (no cross-site form post)
+            host = self.headers.get("Host", "").rsplit(":", 1)[0]
+            if host not in ("127.0.0.1", "localhost") or not self.headers.get("Content-Type", "").startswith("application/json"):
+                return self._send(403, b"forbidden", "text/plain")
+            try:
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0) or 0)) or b"{}")
+                result, code = {"targets": hiddify_targets(body.get("link"))}, 200
+            except PanelError as e:
+                result, code = {"error": str(e)}, 400
+            except ValueError:
+                result, code = {"error": "api"}, 400
+            self._send(code, json.dumps(result).encode(), "application/json")
         else:
             self._send(404, b"not found", "text/plain")
 

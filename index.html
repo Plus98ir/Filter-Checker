@@ -167,6 +167,20 @@
     .results td.cell::before { content: attr(data-label); display: block; font-size: 11px; color: var(--muted); margin-bottom: 1px; }
     .results tr:has(details[open]) td.dom { grid-column: 1 / -1; }
   }
+
+.hp { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--stroke2); }
+.hp h3 { margin: 0 0 4px; font-size: 15px; }
+.hp-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.hp-row input { flex: 1 1 260px; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--stroke2); background: var(--input); color: var(--text); font: 14px var(--mono); outline: none; }
+.hp-row input:focus { border-color: var(--accent); }
+.hp-btn { padding: 10px 16px; font-size: 14px; font-weight: 600; border-radius: 12px; }
+.hp-btn:disabled { opacity: .5; cursor: default; }
+.hp-check { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
+#hpStatus.bad { color: #f87171; }
+.role { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11px; background: rgba(99,102,241,.16); color: #a5b4fc; }
+.role.reality { background: rgba(245,158,11,.16); color: #fbbf24; }
+.role.fake { background: rgba(148,163,184,.18); color: #cbd5e1; }
+.advice { margin-top: 6px; font-size: 12px; color: #fbbf24; }
 </style>
 <!-- GoatCounter: privacy-friendly visit stats, counted per project -->
 <script>window.goatcounter={path:function(){return "/"+location.pathname.split("/")[1]+"/"}};</script>
@@ -207,6 +221,16 @@ github.com</textarea>
         <button class="primary" id="run" disabled data-i="run"></button>
         <span class="progress" id="progress"></span>
       </div>
+      <div class="hp" id="hp" hidden>
+        <h3 data-i="hpTitle"></h3>
+        <p class="note" data-i="hpNote"></p>
+        <div class="row hp-row">
+          <input type="password" id="hpLink" dir="ltr" autocomplete="off" spellcheck="false" placeholder="https://panel.example.com/admin-path/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/">
+          <button class="ghost hp-btn" id="hpLoad" data-i="hpLoad"></button>
+        </div>
+        <label class="hp-check"><input type="checkbox" id="hpRemember"> <span data-i="hpRemember"></span></label>
+        <p class="note" id="hpStatus"></p>
+      </div>
     </section>
     <section class="glass card">
       <h2 id="modeTitle"></h2>
@@ -233,6 +257,17 @@ const T = {
   fa: {
     title: 'بررسی <span>فیلترینگ</span> سایت',
     sub: "تشخیص اینکه سایت فیلتر است یا نه، و اختلال دقیقاً روی کدام لایه است: DNS، IP، SNI، TLS یا HTTP.",
+    hpTitle: "بررسی پنل هیدیفای",
+    hpNote: "دامنه‌های پنل، SNIهای REALITY و SNIهای پروکسی‌های تلگرام/ShadowTLS را از پنل در لیست بالا می‌گذارد تا بررسی کنید. لینک ادمین همان لینکی است که پنل را با آن باز می‌کنید. اگر پنل فقط با فیلترشکن باز می‌شود، فقط برای دریافت لیست روشنش کنید و قبل از «بررسی» خاموشش کنید؛ وگرنه نتیجه مال فیلترشکن است، نه اینترنت شما.",
+    hpLoad: "دریافت لیست از پنل", hpRemember: "روی همین کامپیوتر بماند",
+    hpLoading: "در حال دریافت لیست از پنل…", hpGot: n => `${n} دامنه از پنل در لیست بالا گذاشته شد. اگر فیلترشکن روشن است خاموشش کنید، بعد «بررسی» را بزنید.`,
+    hp_link: "این لینک ادمین نیست (UUID ادمین داخلش نیست).", hp_auth: "پنل این لینک را قبول نکرد.",
+    hp_unreachable: "به پنل دسترسی نیست؛ اگر فقط با فیلترشکن باز می‌شود، برای این مرحله روشنش کنید.",
+    hp_api: "جواب غیرمنتظره از پنل (هیدیفای ۱۴ به بالا است؟).",
+    role_panel: "دامنهٔ پنل", role_reality: "SNI ریالیتی", role_fake: "SNI جعلی",
+    adv_panel: "کاربرها از این اینترنت مستقیم به این دامنه وصل نمی‌شوند؛ یک دامنهٔ دیگر یا CDN بگذارید.",
+    adv_reality: "REALITY با این SNI روی این اینترنت کار نمی‌کند؛ در پنل یک SNI دیگر بگذارید.",
+    adv_fake: "پروکسی‌ای که با این SNI کار می‌کند روی این اینترنت وصل نمی‌شود؛ SNI را عوض کنید.",
     domainsLabel: "دامنه‌ها (هر خط یکی)", run: "بررسی", of: "از", install: "نصب برنامه",
     modeLocal: "حالت کامل", modeWeb: "حالت وب",
     noteLocal: "تست‌ها با server.py از روی همین کامپیوتر انجام می‌شود: DNS سیستم، اتصال TCP، فیلتر SNI و صفحه‌ی بلاک HTTP.",
@@ -270,6 +305,17 @@ const T = {
   en: {
     title: 'Website <span>filtering</span> check',
     sub: "Find out whether a website is filtered, and exactly which layer the interference is on: DNS, IP, SNI, TLS or HTTP.",
+    hpTitle: "Check a Hiddify panel",
+    hpNote: "Loads the panel's domains, REALITY SNIs and the SNIs of its Telegram / ShadowTLS proxies into the list above, to check them. The admin link is the link you open the panel with. If the panel only opens with a VPN, turn it on just to load the list, and off before you press Check (otherwise you test the VPN, not your internet).",
+    hpLoad: "Load the list from the panel", hpRemember: "Remember on this computer",
+    hpLoading: "Loading the list from the panel…", hpGot: n => `${n} domains from the panel are in the list above. If a VPN is on, turn it off, then press Check.`,
+    hp_link: "This is not an admin link (no admin UUID in it).", hp_auth: "The panel refused this link.",
+    hp_unreachable: "Cannot reach the panel; if it only opens with a VPN, turn it on for this step.",
+    hp_api: "Unexpected answer from the panel (is it Hiddify 14+?).",
+    role_panel: "panel domain", role_reality: "REALITY SNI", role_fake: "fake SNI",
+    adv_panel: "Users on this network can't reach this domain directly; use another domain or a CDN.",
+    adv_reality: "REALITY with this SNI doesn't work on this network; set another SNI in the panel.",
+    adv_fake: "The proxy using this SNI can't connect on this network; change its SNI.",
     domainsLabel: "Domains (one per line)", run: "Check", of: "of", install: "Install app",
     modeLocal: "Full mode", modeWeb: "Web mode",
     noteLocal: "Tests run from this computer through server.py: system DNS, TCP connect, SNI filtering and the HTTP block page.",
@@ -319,7 +365,8 @@ const langParam = new URLSearchParams(location.search).get("lang");
 let lang = T[langParam] ? langParam : store("fc_lang") || (/^fa\b/i.test(navigator.language) ? "fa" : "en");
 let mode = null;              // "local" (server.py) | "web" (faghat browser, PWA)
 let rows = [];                // [{ domain, tr, result }]
-const t = k => T[lang][k] ?? k;
+const t = (k, ...a) => { const v = T[lang][k] ?? k; return typeof v === "function" ? v(...a) : v; };
+const roles = {};             // domain -> panel | reality | fake (rows loaded from a Hiddify panel)
 const mark = (ok, text) => `<span class="${ok === null ? "mid" : ok ? "ok" : "bad"}">${esc(text)}</span>`;
 const ipsLine = ips => ips.length ? `<div class="mid small" dir="ltr">${esc(ips.slice(0, 2).join(", "))}</div>` : "";
 
@@ -395,7 +442,8 @@ function renderRow(row) {
   if (r.error) { tr.innerHTML = `<td class="dom">${esc(domain)}</td><td class="where" colspan="${span}">${mark(false, r.error)}</td>`; return; }
   const v = VERDICT_CLS[r.verdict] ? r.verdict : "unknown";
   tr.innerHTML = `
-    <td class="dom">${esc(r.domain)}
+    <td class="dom">${esc(r.domain)}${roles[r.domain] ? `<div><span class="role ${roles[r.domain]}">${esc(t("role_" + roles[r.domain]))}</span></div>` : ""}
+      ${roles[r.domain] && v === "blocked" ? `<div class="advice">${esc(t("adv_" + roles[r.domain]))}</div>` : ""}
       <details><summary>${t("details")} · ${r.elapsed_ms}ms</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details></td>
     <td class="verdict"><span class="badge ${VERDICT_CLS[v]}">${t("v_" + v)}</span></td>
     <td class="where${r.issues.length ? "" : " none"}">${issuesCell(r)}</td>` +
@@ -511,6 +559,30 @@ async function run() {
   $("#run").disabled = false;
 }
 
+
+/* ===== Hiddify panel (full mode only: the browser can't call the panel itself) ===== */
+function hpStatus(msg, bad) { const el = $("#hpStatus"); el.textContent = msg || ""; el.className = "note" + (bad ? " bad" : ""); }
+async function hpLoad() {
+  const link = $("#hpLink").value.trim();
+  store("fc_hp_link", $("#hpRemember").checked ? link : "");
+  hpStatus(t("hpLoading"));
+  $("#hpLoad").disabled = true;
+  try {
+    const res = await fetch("api/hiddify/targets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ link }) });
+    const data = await res.json();
+    if (!res.ok) { hpStatus(t("hp_" + (data.error || "api")), true); return; }
+    const list = data.targets || [];
+    Object.keys(roles).forEach(k => delete roles[k]);
+    list.forEach(x => roles[x.domain] = x.role);
+    $("#domains").value = list.map(x => x.domain).join("\n");
+    hpStatus(t("hpGot", list.length));
+  } catch { hpStatus(t("serverDown"), true); }
+  finally { $("#hpLoad").disabled = false; }
+}
+$("#hpLoad").onclick = hpLoad;
+$("#hpRemember").onchange = () => store("fc_hp_link", $("#hpRemember").checked ? $("#hpLink").value.trim() : "");
+{ const saved = store("fc_hp_link"); if (saved) { $("#hpLink").value = saved; $("#hpRemember").checked = true; } }
+
 /* ===== language / theme / mode ===== */
 function applyLang() {
   document.documentElement.lang = lang;
@@ -557,6 +629,7 @@ detectMode().then(m => {
   $("#mode").className = "mode " + m;
   applyLang();
   $("#run").disabled = false;
+  $("#hp").hidden = m !== "local";  // the browser can't call the panel itself (CORS); server.py does
   if (m === "local") {
     // Server bedune panjere ejra mishe; ba in ping-ha mifahme tab hanuz baz e
     setInterval(() => fetch("api/ping", { cache: "no-store" }).catch(() => {}), 10000);
