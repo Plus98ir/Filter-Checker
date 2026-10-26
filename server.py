@@ -233,17 +233,97 @@ def hiddify_targets(link: str) -> list[dict]:
             continue
         fake, mode = d.get("fake_mode") or "", d.get("mode") or ""
         if fake == "reality":
-            names, role = [d.get("domain") or ""] + re.split(r"[\s,;]+", d.get("servernames") or ""), "reality"
+            add_names(out, [d.get("domain"), d.get("servernames")], "reality")
         elif fake in ("telegram", "shadowtls", "ssfaketls"):
-            names, role = [d.get("domain") or ""], "fake"
+            add_names(out, [d.get("domain")], "fake")
         elif mode != "sub_link_only":
-            names, role = [d.get("domain") or ""], "panel"
-        else:
-            continue
-        for name in names:
-            name = name.strip().lower()
-            if name and "*" not in name and not re.fullmatch(r"[0-9.:]+", name):
+            add_names(out, [d.get("domain")], "panel")
+    return [{"domain": k, "role": v} for k, v in out.items()]
+
+
+def add_names(out: dict[str, str], names, role: str):
+    """Adds each domain in names (strings, maybe "a, b" lists) to out; skips IPs, wildcards and ones already there."""
+    for item in names:
+        for name in re.split(r"[\s,;]+", str(item or "")):
+            name = name.strip().lower().rstrip(".")
+            if name and "*" not in name and not re.fullmatch(r"[0-9.:\[\]]+", name):
                 out.setdefault(name, role)
+
+
+# ---------- 3x-ui (Sanaei) panel: the same, from its inbounds ----------
+def xui_targets(link: str, username: str = "", password: str = "") -> list[dict]:
+    """[{domain, role}] from a 3x-ui panel's enabled inbounds: role = panel (the server, TLS SNI, CDN Host, external
+    proxy and subscription domains users connect to) or reality (a REALITY SNI). `link` is the address the admin opens
+    the panel with (https://host:port/<web base path>/...); username / password are the panel login (or user:pass@ in
+    the link). Nothing is stored."""
+    u = urllib.parse.urlsplit(str(link or "").strip())
+    if u.scheme not in ("http", "https") or not u.hostname:
+        raise PanelError("xui_link")
+    username = username or urllib.parse.unquote(u.username or "")
+    password = password or urllib.parse.unquote(u.password or "")
+    if not username or not password:
+        raise PanelError("xui_login")
+    # Web base path = the path before /panel/... or /login
+    parts = [x for x in u.path.split("/") if x]
+    parts = parts[:next((i for i, x in enumerate(parts) if x in ("panel", "login", "xui")), len(parts))]
+    base = f"{u.scheme}://{u.netloc.rsplit('@', 1)[-1]}/" + "".join(p + "/" for p in parts)
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor())
+
+    def call(path: str, data: bytes | None = None) -> dict:
+        req = urllib.request.Request(base + path, data=data,
+                                     headers={"Accept": "application/json", "User-Agent": "Filter-Checker"})
+        with opener.open(req, timeout=20) as r:
+            return json.loads(r.read() or b"{}")
+
+    try:
+        if not call("login", urllib.parse.urlencode({"username": username, "password": password}).encode()).get("success"):
+            raise PanelError("xui_auth")
+        try:
+            inbounds = call("panel/api/inbounds/list").get("obj")
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            inbounds = call("panel/inbound/list", b"").get("obj")  # older versions
+        try:
+            settings = call("panel/setting/all", b"").get("obj") or {}
+        except (OSError, ValueError, AttributeError):
+            settings = {}
+    except urllib.error.HTTPError as e:
+        raise PanelError("xui_auth" if e.code in (401, 403) else "xui_api") from None
+    except urllib.error.URLError as e:
+        raise PanelError("cert" if isinstance(e.reason, ssl.SSLCertVerificationError) else "unreachable") from None
+    except OSError:
+        raise PanelError("unreachable") from None
+    except (ValueError, AttributeError):
+        raise PanelError("xui_api") from None
+    if not isinstance(inbounds, list):
+        raise PanelError("xui_api")
+
+    out: dict[str, str] = {}
+    add_names(out, [u.hostname], "panel")
+    for inb in inbounds:
+        if not isinstance(inb, dict) or inb.get("enable") is False:
+            continue
+        try:
+            ss = inb.get("streamSettings") or {}
+            ss = json.loads(ss) if isinstance(ss, str) else ss
+            if not isinstance(ss, dict):
+                continue
+            if ss.get("security") == "reality":
+                add_names(out, (ss.get("realitySettings") or {}).get("serverNames") or [], "reality")
+            elif ss.get("security") == "tls":
+                add_names(out, [(ss.get("tlsSettings") or {}).get("serverName")], "panel")
+            # CDN / fronting host: ws, httpupgrade, xhttp, grpc authority, tcp http header
+            net = ss.get(f"{ss.get('network') or 'tcp'}Settings") or {}
+            req_headers = ((net.get("header") or {}).get("request") or {}).get("headers") or {}
+            add_names(out, [net.get("host"), net.get("authority"), (net.get("headers") or {}).get("Host")]
+                      + list(req_headers.get("Host") or []), "panel")
+            add_names(out, [p.get("dest") for p in ss.get("externalProxy") or [] if isinstance(p, dict)], "panel")
+        except (ValueError, AttributeError, TypeError):
+            continue
+    if isinstance(settings, dict):
+        add_names(out, [settings.get("subDomain")] + [urllib.parse.urlsplit(str(settings.get(k) or "")).hostname
+                                                      for k in ("subURI", "subJsonURI")], "panel")
     return [{"domain": k, "role": v} for k, v in out.items()]
 
 
@@ -335,14 +415,18 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/bye":
             last_seen = min(last_seen, time.monotonic() - IDLE_TIMEOUT + BYE_GRACE)
             self._send(204, b"", "text/plain")
-        elif path == "/api/hiddify/targets":
+        elif path == "/api/panel/targets":
             # Only this page may use it: our own Host (no DNS rebinding) and JSON (no cross-site form post)
             host = self.headers.get("Host", "").rsplit(":", 1)[0]
             if host not in ("127.0.0.1", "localhost") or not self.headers.get("Content-Type", "").startswith("application/json"):
                 return self._send(403, b"forbidden", "text/plain")
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0) or 0)) or b"{}")
-                result, code = {"targets": hiddify_targets(body.get("link"))}, 200
+                if body.get("kind") == "xui":
+                    targets = xui_targets(body.get("link"), body.get("username") or "", body.get("password") or "")
+                else:
+                    targets = hiddify_targets(body.get("link"))
+                result, code = {"targets": targets}, 200
             except PanelError as e:
                 result, code = {"error": str(e)}, 400
             except ValueError:

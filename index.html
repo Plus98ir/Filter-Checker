@@ -173,6 +173,8 @@
 .hp-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .hp-row input { flex: 1 1 260px; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--stroke2); background: var(--input); color: var(--text); font: 14px var(--mono); outline: none; }
 .hp-row input:focus { border-color: var(--accent); }
+.hp-kind { display: inline-flex; margin: 4px 0 10px; }
+.hp-kind button { font: 600 13px/1.4 var(--font-en); padding: 5px 14px; }
 .hp-btn { padding: 10px 16px; font-size: 14px; font-weight: 600; border-radius: 12px; }
 .hp-btn:disabled { opacity: .5; cursor: default; }
 .hp-check { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
@@ -223,11 +225,18 @@ github.com</textarea>
       </div>
       <div class="hp" id="hp" hidden>
         <h3 data-i="hpTitle"></h3>
-        <p class="note" data-i="hpNote"></p>
-        <div class="row hp-row">
-          <input type="password" id="hpLink" dir="ltr" autocomplete="off" spellcheck="false" placeholder="https://panel.example.com/admin-path/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/">
-          <button class="ghost hp-btn" id="hpLoad" data-i="hpLoad"></button>
+        <div class="seg hp-kind" role="group" aria-label="Panel">
+          <button data-kind="hiddify">Hiddify</button><button data-kind="xui">3x-ui</button>
         </div>
+        <p class="note" id="hpNote"></p>
+        <div class="row hp-row">
+          <input type="password" id="hpLink" dir="ltr" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="row hp-row" id="hpLogin" hidden>
+          <input id="hpUser" dir="ltr" autocomplete="off" spellcheck="false" autocapitalize="off">
+          <input type="password" id="hpPass" dir="ltr" autocomplete="off">
+        </div>
+        <div class="row"><button class="ghost hp-btn" id="hpLoad" data-i="hpLoad"></button></div>
         <label class="hp-check"><input type="checkbox" id="hpRemember"> <span data-i="hpRemember"></span></label>
         <p class="note" id="hpStatus"></p>
       </div>
@@ -257,8 +266,14 @@ const T = {
   fa: {
     title: 'بررسی <span>فیلترینگ</span> سایت',
     sub: "تشخیص اینکه سایت فیلتر است یا نه، و اختلال دقیقاً روی کدام لایه است: DNS، IP، SNI، TLS یا HTTP.",
-    hpTitle: "بررسی پنل هیدیفای",
-    hpNote: "دامنه‌های پنل، SNIهای REALITY و SNIهای پروکسی‌های تلگرام/ShadowTLS را از پنل در لیست بالا می‌گذارد تا بررسی کنید. لینک ادمین همان لینکی است که پنل را با آن باز می‌کنید. اگر پنل فقط با فیلترشکن باز می‌شود، فقط برای دریافت لیست روشنش کنید و قبل از «بررسی» خاموشش کنید؛ وگرنه نتیجه مال فیلترشکن است، نه اینترنت شما.",
+    hpTitle: "بررسی پنل (هیدیفای / 3x-ui)",
+    hpNote_xui: "دامنهٔ سرور، SNIهای REALITY و TLS، دامنه‌های CDN (Host در WS / XHTTP / HTTPUpgrade)، External Proxy و دامنهٔ ساب را از اینباندهای فعال پنل 3x-ui (ثنایی) در لیست بالا می‌گذارد تا بررسی کنید. لینک همان آدرسی است که پنل را با آن باز می‌کنید (با مسیر مخفی)، به‌همراه نام کاربری و رمز پنل. اگر پنل فقط با فیلترشکن باز می‌شود، فقط برای دریافت لیست روشنش کنید و قبل از «بررسی» خاموشش کنید؛ وگرنه نتیجه مال فیلترشکن است، نه اینترنت شما.",
+    hpPh_xui: "https://panel.example.com:2053/web-base-path/", hpUser: "نام کاربری پنل", hpPass: "رمز پنل",
+    hp_xui_link: "لینک پنل درست نیست (مثل https://host:port/path/).", hp_xui_login: "نام کاربری و رمز پنل را وارد کنید.",
+    hp_xui_auth: "پنل نام کاربری یا رمز را قبول نکرد (اگر ورود دومرحله‌ای روشن است، فعلاً پشتیبانی نمی‌شود).",
+    hp_xui_api: "جواب غیرمنتظره از پنل؛ مسیر لینک (web base path) را چک کنید.",
+    hp_cert: "گواهی SSL پنل معتبر نیست؛ لینک را با دامنه‌ای که گواهی دارد بدهید.",
+    hpNote_hiddify: "دامنه‌های پنل، SNIهای REALITY و SNIهای پروکسی‌های تلگرام/ShadowTLS را از پنل در لیست بالا می‌گذارد تا بررسی کنید. لینک ادمین همان لینکی است که پنل را با آن باز می‌کنید. اگر پنل فقط با فیلترشکن باز می‌شود، فقط برای دریافت لیست روشنش کنید و قبل از «بررسی» خاموشش کنید؛ وگرنه نتیجه مال فیلترشکن است، نه اینترنت شما.",
     hpLoad: "دریافت لیست از پنل", hpRemember: "روی همین کامپیوتر بماند",
     hpLoading: "در حال دریافت لیست از پنل…", hpGot: n => `${n} دامنه از پنل در لیست بالا گذاشته شد. اگر فیلترشکن روشن است خاموشش کنید، بعد «بررسی» را بزنید.`,
     hp_link: "این لینک ادمین نیست (UUID ادمین داخلش نیست).", hp_auth: "پنل این لینک را قبول نکرد.",
@@ -305,8 +320,14 @@ const T = {
   en: {
     title: 'Website <span>filtering</span> check',
     sub: "Find out whether a website is filtered, and exactly which layer the interference is on: DNS, IP, SNI, TLS or HTTP.",
-    hpTitle: "Check a Hiddify panel",
-    hpNote: "Loads the panel's domains, REALITY SNIs and the SNIs of its Telegram / ShadowTLS proxies into the list above, to check them. The admin link is the link you open the panel with. If the panel only opens with a VPN, turn it on just to load the list, and off before you press Check (otherwise you test the VPN, not your internet).",
+    hpTitle: "Check a panel (Hiddify / 3x-ui)",
+    hpNote_xui: "Loads the server domain, REALITY and TLS SNIs, CDN hosts (WS / XHTTP / HTTPUpgrade Host), external proxies and the subscription domain from the enabled inbounds of a 3x-ui (Sanaei) panel into the list above, to check them. The link is the address you open the panel with (with its secret path), plus the panel username and password. If the panel only opens with a VPN, turn it on just to load the list, and off before you press Check (otherwise you test the VPN, not your internet).",
+    hpPh_xui: "https://panel.example.com:2053/web-base-path/", hpUser: "Panel username", hpPass: "Panel password",
+    hp_xui_link: "The panel link is not valid (like https://host:port/path/).", hp_xui_login: "Enter the panel username and password.",
+    hp_xui_auth: "The panel refused the username or password (two-factor login is not supported yet).",
+    hp_xui_api: "Unexpected answer from the panel; check the link's path (web base path).",
+    hp_cert: "The panel's SSL certificate is not valid; use a link with a domain that has a certificate.",
+    hpNote_hiddify: "Loads the panel's domains, REALITY SNIs and the SNIs of its Telegram / ShadowTLS proxies into the list above, to check them. The admin link is the link you open the panel with. If the panel only opens with a VPN, turn it on just to load the list, and off before you press Check (otherwise you test the VPN, not your internet).",
     hpLoad: "Load the list from the panel", hpRemember: "Remember on this computer",
     hpLoading: "Loading the list from the panel…", hpGot: n => `${n} domains from the panel are in the list above. If a VPN is on, turn it off, then press Check.`,
     hp_link: "This is not an admin link (no admin UUID in it).", hp_auth: "The panel refused this link.",
@@ -366,7 +387,8 @@ let lang = T[langParam] ? langParam : store("fc_lang") || (/^fa\b/i.test(navigat
 let mode = null;              // "local" (server.py) | "web" (faghat browser, PWA)
 let rows = [];                // [{ domain, tr, result }]
 const t = (k, ...a) => { const v = T[lang][k] ?? k; return typeof v === "function" ? v(...a) : v; };
-const roles = {};             // domain -> panel | reality | fake (rows loaded from a Hiddify panel)
+const roles = {};             // domain -> panel | reality | fake (rows loaded from a Hiddify / 3x-ui panel)
+const HP_PH = { hiddify: "https://panel.example.com/admin-path/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/" };
 const mark = (ok, text) => `<span class="${ok === null ? "mid" : ok ? "ok" : "bad"}">${esc(text)}</span>`;
 const ipsLine = ips => ips.length ? `<div class="mid small" dir="ltr">${esc(ips.slice(0, 2).join(", "))}</div>` : "";
 
@@ -560,15 +582,42 @@ async function run() {
 }
 
 
-/* ===== Hiddify panel (full mode only: the browser can't call the panel itself) ===== */
+/* ===== Hiddify / 3x-ui panel (full mode only: the browser can't call the panel itself) ===== */
+let hpKind = store("fc_hp_kind") === "xui" ? "xui" : "hiddify";
 function hpStatus(msg, bad) { const el = $("#hpStatus"); el.textContent = msg || ""; el.className = "note" + (bad ? " bad" : ""); }
+function hpTexts() {
+  $("#hpNote").textContent = t("hpNote_" + hpKind);
+  $("#hpLink").placeholder = HP_PH[hpKind] || t("hpPh_xui");
+  $("#hpUser").placeholder = t("hpUser");
+  $("#hpPass").placeholder = t("hpPass");
+}
+const hpValues = () => ({ link: $("#hpLink").value.trim(), username: $("#hpUser").value.trim(), password: $("#hpPass").value });
+function hpSave() {
+  const on = $("#hpRemember").checked, v = hpValues();
+  if (hpKind === "xui") store("fc_xui", on ? JSON.stringify(v) : "");
+  else store("fc_hp_link", on ? v.link : "");
+}
+function hpRestore() {
+  const saved = store(hpKind === "xui" ? "fc_xui" : "fc_hp_link") || "";
+  let v = { link: saved };
+  if (hpKind === "xui") try { v = JSON.parse(saved) || {}; } catch { v = {}; }
+  $("#hpLink").value = v.link || ""; $("#hpUser").value = v.username || ""; $("#hpPass").value = v.password || "";
+  $("#hpRemember").checked = !!saved;
+}
+function setHpKind(kind) {
+  hpKind = kind; store("fc_hp_kind", kind);
+  document.querySelectorAll("[data-kind]").forEach(b => b.setAttribute("aria-pressed", b.dataset.kind === kind));
+  $("#hpLogin").hidden = kind !== "xui";
+  $("#hpLink").type = kind === "xui" ? "url" : "password";  // the Hiddify link holds the admin key
+  hpTexts(); hpRestore(); hpStatus("");
+}
 async function hpLoad() {
-  const link = $("#hpLink").value.trim();
-  store("fc_hp_link", $("#hpRemember").checked ? link : "");
+  hpSave();
   hpStatus(t("hpLoading"));
   $("#hpLoad").disabled = true;
   try {
-    const res = await fetch("api/hiddify/targets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ link }) });
+    const res = await fetch("api/panel/targets", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: hpKind, ...hpValues() }) });
     const data = await res.json();
     if (!res.ok) { hpStatus(t("hp_" + (data.error || "api")), true); return; }
     const list = data.targets || [];
@@ -580,8 +629,9 @@ async function hpLoad() {
   finally { $("#hpLoad").disabled = false; }
 }
 $("#hpLoad").onclick = hpLoad;
-$("#hpRemember").onchange = () => store("fc_hp_link", $("#hpRemember").checked ? $("#hpLink").value.trim() : "");
-{ const saved = store("fc_hp_link"); if (saved) { $("#hpLink").value = saved; $("#hpRemember").checked = true; } }
+$("#hpRemember").onchange = hpSave;
+document.querySelectorAll("[data-kind]").forEach(b => b.addEventListener("click", () => setHpKind(b.dataset.kind)));
+setHpKind(hpKind);
 
 /* ===== language / theme / mode ===== */
 function applyLang() {
@@ -589,6 +639,7 @@ function applyLang() {
   document.documentElement.dir = lang === "fa" ? "rtl" : "ltr";
   document.querySelectorAll("[data-i]").forEach(el => el.innerHTML = t(el.dataset.i));
   document.querySelectorAll("[data-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  hpTexts();
   if (!mode) return;
   const local = mode === "local";
   $("#mode").textContent = $("#modeTitle").textContent = t(local ? "modeLocal" : "modeWeb");
