@@ -201,7 +201,7 @@ UUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{
 
 
 class PanelError(Exception):
-    """str(e) is a key the page translates (hp_<key>)."""
+    """args[0] is a key the page translates (hp_<key>); args[1], if any, is the panel's own answer, shown as is."""
 
 
 def hiddify_targets(link: str) -> list[dict]:
@@ -266,32 +266,70 @@ def xui_targets(link: str, username: str = "", password: str = "") -> list[dict]
     # Web base path = the path before /panel/... or /login
     parts = [x for x in u.path.split("/") if x]
     parts = parts[:next((i for i, x in enumerate(parts) if x in ("panel", "login", "xui")), len(parts))]
-    base = f"{u.scheme}://{u.netloc.rsplit('@', 1)[-1]}/" + "".join(p + "/" for p in parts)
+    origin = f"{u.scheme}://{u.netloc.rsplit('@', 1)[-1]}"
+    base = f"{origin}/" + "".join(p + "/" for p in parts)
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor())
+    csrf = ""
 
-    def call(path: str, data: bytes | None = None) -> dict:
-        req = urllib.request.Request(base + path, data=data,
-                                     headers={"Accept": "application/json", "User-Agent": "Filter-Checker"})
+    def call(path: str, body: dict | None = None, as_json: bool = False) -> dict:
+        # Talks like the panel's own page: same-origin headers, the session cookie and (newer versions) the CSRF token
+        headers = {"Accept": "application/json, text/plain, */*", "User-Agent": "Mozilla/5.0 (Filter-Checker)",
+                   "X-Requested-With": "XMLHttpRequest", "Origin": origin, "Referer": base}
+        data = None
+        if body is not None:
+            if csrf:
+                headers["X-CSRF-Token"] = csrf
+            if as_json:
+                data, headers["Content-Type"] = json.dumps(body).encode(), "application/json"
+            else:
+                data = urllib.parse.urlencode(body).encode()
+                headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
+        req = urllib.request.Request(base + path, data=data, headers=headers, method="POST" if body is not None else "GET")
         with opener.open(req, timeout=20) as r:
             return json.loads(r.read() or b"{}")
 
+    def get_csrf() -> str:
+        """The CSRF token of panels that have one ('' for older versions)."""
+        try:
+            out = call("csrf-token")
+            if out.get("success") and isinstance(out.get("obj"), str):
+                return out["obj"]
+        except (OSError, ValueError, AttributeError):
+            pass
+        try:  # fallback: the token in the login page
+            with opener.open(urllib.request.Request(base, headers={"User-Agent": "Mozilla/5.0"}), timeout=20) as r:
+                m = re.search(rb'name="csrf-token" content="([^"]+)"', r.read(200000))
+                return m.group(1).decode() if m else ""
+        except OSError:
+            return ""
+
     try:
-        if not call("login", urllib.parse.urlencode({"username": username, "password": password}).encode()).get("success"):
-            raise PanelError("xui_auth")
+        csrf = get_csrf()
+        login = {"username": username, "password": password}
+        out = call("login", login)
+        if not out.get("success"):
+            again = call("login", login, as_json=True)  # some versions read only JSON
+            if not again.get("success"):
+                raise PanelError("xui_auth", str(out.get("msg") or again.get("msg") or "")[:160])
+        csrf = get_csrf() or csrf  # the token may change with the login
         try:
             inbounds = call("panel/api/inbounds/list").get("obj")
         except urllib.error.HTTPError as e:
             if e.code != 404:
                 raise
-            inbounds = call("panel/inbound/list", b"").get("obj")  # older versions
-        try:
-            settings = call("panel/setting/all", b"").get("obj") or {}
-        except (OSError, ValueError, AttributeError):
-            settings = {}
+            inbounds = call("panel/inbound/list", {}).get("obj")  # older versions
+        settings = {}
+        for path, as_json in (("panel/api/setting/all", True), ("panel/setting/all", False)):
+            try:
+                settings = call(path, {}, as_json).get("obj") or {}
+                break
+            except (OSError, ValueError, AttributeError):
+                continue
     except urllib.error.HTTPError as e:
-        raise PanelError("xui_auth" if e.code in (401, 403) else "xui_api") from None
+        raise PanelError("xui_auth" if e.code in (401, 403) else "xui_api", f"HTTP {e.code} {e.url}") from None
     except urllib.error.URLError as e:
-        raise PanelError("cert" if isinstance(e.reason, ssl.SSLCertVerificationError) else "unreachable") from None
+        raise PanelError("cert" if isinstance(e.reason, ssl.SSLCertVerificationError) else "unreachable",
+                         str(e.reason)[:160]) from None
     except OSError:
         raise PanelError("unreachable") from None
     except (ValueError, AttributeError):
@@ -428,7 +466,7 @@ class Handler(BaseHTTPRequestHandler):
                     targets = hiddify_targets(body.get("link"))
                 result, code = {"targets": targets}, 200
             except PanelError as e:
-                result, code = {"error": str(e)}, 400
+                result, code = {"error": e.args[0], "detail": e.args[1] if len(e.args) > 1 else ""}, 400
             except ValueError:
                 result, code = {"error": "api"}, 400
             self._send(code, json.dumps(result).encode(), "application/json")

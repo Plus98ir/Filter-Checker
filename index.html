@@ -277,7 +277,7 @@ const T = {
     hpNote_xui: "دامنهٔ سرور، SNIهای REALITY و TLS، دامنه‌های CDN (Host در WS / XHTTP / HTTPUpgrade)، External Proxy و دامنهٔ ساب را از اینباندهای فعال پنل 3x-ui (ثنایی) در لیست بالا می‌گذارد تا بررسی کنید. لینک همان آدرسی است که پنل را با آن باز می‌کنید (با مسیر مخفی)، به‌همراه نام کاربری و رمز پنل. اگر پنل فقط با فیلترشکن باز می‌شود، فقط برای دریافت لیست روشنش کنید و قبل از «بررسی» خاموشش کنید؛ وگرنه نتیجه مال فیلترشکن است، نه اینترنت شما.",
     hpPh_xui: "https://panel.example.com:2053/web-base-path/", hpUser: "نام کاربری پنل", hpPass: "رمز پنل",
     hp_xui_link: "لینک پنل درست نیست (مثل https://host:port/path/).", hp_xui_login: "نام کاربری و رمز پنل را وارد کنید.",
-    hp_xui_auth: "پنل نام کاربری یا رمز را قبول نکرد (اگر ورود دومرحله‌ای روشن است، فعلاً پشتیبانی نمی‌شود).",
+    hp_xui_auth: "پنل نام کاربری یا رمز را قبول نکرد.",
     hp_xui_api: "جواب غیرمنتظره از پنل؛ مسیر لینک (web base path) را چک کنید.",
     hp_cert: "گواهی SSL پنل معتبر نیست؛ لینک را با دامنه‌ای که گواهی دارد بدهید.",
     hpNote_hiddify: "دامنه‌های پنل، SNIهای REALITY و SNIهای پروکسی‌های تلگرام/ShadowTLS را از پنل در لیست بالا می‌گذارد تا بررسی کنید. لینک ادمین همان لینکی است که پنل را با آن باز می‌کنید. اگر پنل فقط با فیلترشکن باز می‌شود، فقط برای دریافت لیست روشنش کنید و قبل از «بررسی» خاموشش کنید؛ وگرنه نتیجه مال فیلترشکن است، نه اینترنت شما.",
@@ -333,7 +333,7 @@ const T = {
     hpNote_xui: "Loads the server domain, REALITY and TLS SNIs, CDN hosts (WS / XHTTP / HTTPUpgrade Host), external proxies and the subscription domain from the enabled inbounds of a 3x-ui (Sanaei) panel into the list above, to check them. The link is the address you open the panel with (with its secret path), plus the panel username and password. If the panel only opens with a VPN, turn it on just to load the list, and off before you press Check (otherwise you test the VPN, not your internet).",
     hpPh_xui: "https://panel.example.com:2053/web-base-path/", hpUser: "Panel username", hpPass: "Panel password",
     hp_xui_link: "The panel link is not valid (like https://host:port/path/).", hp_xui_login: "Enter the panel username and password.",
-    hp_xui_auth: "The panel refused the username or password (two-factor login is not supported yet).",
+    hp_xui_auth: "The panel refused the username or password.",
     hp_xui_api: "Unexpected answer from the panel; check the link's path (web base path).",
     hp_cert: "The panel's SSL certificate is not valid; use a link with a domain that has a certificate.",
     hpNote_hiddify: "Loads the panel's domains, REALITY SNIs and the SNIs of its Telegram / ShadowTLS proxies into the list above, to check them. The admin link is the link you open the panel with. If the panel only opens with a VPN, turn it on just to load the list, and off before you press Check (otherwise you test the VPN, not your internet).",
@@ -630,7 +630,7 @@ async function hpLoad() {
     const res = await fetch("api/panel/targets", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kind: hpKind, ...hpValues() }) });
     const data = await res.json();
-    if (!res.ok) { hpStatus(t("hp_" + (data.error || "api")), true); return; }
+    if (!res.ok) { hpStatus(t("hp_" + (data.error || "api")) + (data.detail ? ` (${data.detail})` : ""), true); return; }
     const list = data.targets || [];
     Object.keys(roles).forEach(k => delete roles[k]);
     list.forEach(x => roles[x.domain] = x.role);
