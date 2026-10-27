@@ -173,6 +173,9 @@
 .hp-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .hp-row input { flex: 1 1 260px; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--stroke2); background: var(--input); color: var(--text); font: 14px var(--mono); outline: none; }
 .hp-row input:focus { border-color: var(--accent); }
+.dl { margin: 4px 0 14px; }
+.dl .primary { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+.dl .primary::before { content: "⬇"; }
 .hp-kind { display: inline-flex; margin: 4px 0 10px; }
 .hp-kind button { font: 600 13px/1.4 var(--font-en); padding: 5px 14px; }
 .hp-btn { padding: 10px 16px; font-size: 14px; font-weight: 600; border-radius: 12px; }
@@ -244,6 +247,10 @@ github.com</textarea>
     <section class="glass card">
       <h2 id="modeTitle"></h2>
       <p class="note" id="modeNote"></p>
+      <div class="dl" id="dl" hidden>
+        <a class="primary" href="https://github.com/Plus98ir/Filter-Checker/archive/refs/heads/main.zip" download data-i="dl"></a>
+        <p class="hint" data-i="dlHint"></p>
+      </div>
       <p class="note"><a href="https://github.com/Plus98ir/Filter-Checker" target="_blank" rel="noopener" data-i="source"></a></p>
       <div class="hint" id="iosHint" hidden data-i="iosHint"></div>
     </section>
@@ -288,6 +295,8 @@ const T = {
     noteLocal: "تست‌ها با server.py از روی همین کامپیوتر انجام می‌شود: DNS سیستم، اتصال TCP، فیلتر SNI و صفحه‌ی بلاک HTTP.",
     noteWeb: "مرورگر اجازه‌ی تست مستقیم TCP و SNI را نمی‌دهد. این حالت نشان می‌دهد سایت از همین دستگاه باز می‌شود یا نه، و اگر نه، مسدودی روی IP است یا روی نام دامنه (DNS/SNI). برای تشخیص دقیق لایه، server.py را روی کامپیوتر اجرا کنید.",
     source: "سورس و نسخه‌ی کامل در GitHub", built: "ساخته‌شده توسط",
+    dl: "دانلود نسخه‌ی کامل (ویندوز / لینوکس / مک)",
+    dlHint: "فایل zip را باز کنید و روی server.py دوبار کلیک کنید (Python 3 لازم است). صفحه خودش در مرورگر باز می‌شود و همه‌ی لایه‌ها دقیق تست می‌شوند؛ بررسی پنل هیدیفای / 3x-ui هم فقط در این نسخه است.",
     iosHint: "نصب روی آیفون: دکمه‌ی Share و بعد Add to Home Screen",
     hDomain: "دامنه", hVerdict: "نتیجه", hWhere: "محل اختلال", hSite: "اتصال HTTPS", hIp: "تست IP",
     v_open: "باز است", v_blocked: "فیلتر است", v_nxdomain: "دامنه وجود ندارد", v_unknown: "نامشخص",
@@ -342,6 +351,8 @@ const T = {
     noteLocal: "Tests run from this computer through server.py: system DNS, TCP connect, SNI filtering and the HTTP block page.",
     noteWeb: "Browsers can't run raw TCP or SNI tests. This mode shows whether the site opens from this device and, if not, whether the block is on the IP or on the domain name (DNS/SNI). For an exact per-layer diagnosis, run server.py on a computer.",
     source: "Source and full version on GitHub", built: "Built by",
+    dl: "Download the full version (Windows / Linux / macOS)",
+    dlHint: "Unzip it and double-click server.py (needs Python 3). The page opens in your browser and every layer is tested exactly; the Hiddify / 3x-ui panel check is in this version only.",
     iosHint: "Install on iPhone: tap Share, then Add to Home Screen",
     hDomain: "Domain", hVerdict: "Result", hWhere: "Interference", hSite: "HTTPS connect", hIp: "IP test",
     v_open: "Open", v_blocked: "Filtered", v_nxdomain: "Domain doesn't exist", v_unknown: "Unknown",
@@ -681,6 +692,7 @@ detectMode().then(m => {
   applyLang();
   $("#run").disabled = false;
   $("#hp").hidden = m !== "local";  // the browser can't call the panel itself (CORS); server.py does
+  $("#dl").hidden = m === "local";
   if (m === "local") {
     // Server bedune panjere ejra mishe; ba in ping-ha mifahme tab hanuz baz e
     setInterval(() => fetch("api/ping", { cache: "no-store" }).catch(() => {}), 10000);

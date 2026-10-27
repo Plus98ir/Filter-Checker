@@ -2,6 +2,7 @@
 Newest on top. Move finished items here from TASKS.md.
 
 ## 2026-10-27 - Check a 3x-ui (Sanaei) panel
+- Web mode: "Download the full version" button (GitHub main.zip) + how-to-run hint in the mode card; hidden in full mode. Screenshots 1600 EN / 390 FA.
 - Panel box now has a Hiddify / 3x-ui switch. 3x-ui: panel link + username + password -> server.py logs in and lists domains from enabled inbounds (REALITY SNIs, TLS SNI, CDN Host, external proxy, sub domain, panel host). Endpoint renamed /api/hiddify/targets -> /api/panel/targets. Tested against a mock 3x-ui server (login, wrong pass, wrong path, user:pass@ link, disabled inbound skipped) and headless Edge (page JS runs, box shows).
 
 ## 2026-10-22 - Check a Hiddify panel
