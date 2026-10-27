@@ -52,6 +52,7 @@
     --shadow: 0 18px 50px -24px rgba(30, 41, 59, .35), inset 0 1px 0 rgba(255, 255, 255, .9);
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; min-height: 100vh; color: var(--text); background: var(--bg1);
          font: 15px/1.65 var(--font-fa); }
@@ -98,7 +99,7 @@
   .card { padding: 18px; }
   .card h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); }
 
-  textarea { width: 100%; min-height: 150px; resize: vertical; direction: ltr; text-align: left;
+  textarea { width: 100%; min-height: 240px; resize: vertical; direction: ltr; text-align: left;
              font: 14px/1.55 var(--mono); background: var(--input); color: var(--text);
              border: 1px solid var(--stroke2); border-radius: 12px; padding: 12px; outline: none; }
   textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
@@ -117,7 +118,7 @@
   /* ===== results ===== */
   .results { margin-top: 18px; padding: 6px 0; overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { padding: 12px 16px; border-bottom: 1px solid var(--stroke2); text-align: start; vertical-align: top; }
+  th, td { padding: 9px 14px; border-bottom: 1px solid var(--stroke2); text-align: start; vertical-align: top; }
   tr:last-child td { border-bottom: 0; }
   th { color: var(--muted); font-weight: 500; font-size: 12.5px; white-space: nowrap; }
   td.dom { direction: ltr; text-align: left; font-family: var(--mono); font-size: 14px; }
@@ -130,10 +131,35 @@
   .small { font-size: 12px; }
   .issue + .issue { margin-top: 6px; }
   .issue b { color: var(--blocked); font-weight: 700; }
-  details { margin-top: 6px; }
-  summary { cursor: pointer; color: var(--muted); font-size: 12px; font-family: var(--font-fa); }
-  html[lang="en"] summary { font-family: var(--font-en); }
-  html[dir="rtl"] summary { direction: rtl; text-align: right; }
+  .dom-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 2px; }
+  .dom-meta .role { margin: 0; }
+  .more { background: none; padding: 0; color: var(--muted); font: 12px/1.6 var(--font-fa); }
+  html[lang="en"] .more { font-family: var(--font-en); }
+  html[dir="rtl"] .more { direction: rtl; }
+  .more:hover { color: var(--accent); }
+
+  /* ===== details: a window over the page (outside click, Esc or the X closes it) ===== */
+  #dlg { width: min(1100px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 0; color: var(--text);
+         background: var(--bg2); border: 1px solid var(--stroke2); border-radius: 18px; box-shadow: var(--shadow); }
+  #dlg[open] { display: flex; flex-direction: column; }
+  #dlg::backdrop { background: rgba(3, 6, 14, .6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .dlg-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--stroke2); }
+  .dlg-head b { font: 600 16px var(--mono); }
+  #dlg pre { margin: 0; flex: 1; max-height: none; overflow: auto; border-radius: 0; background: transparent; padding: 16px; font-size: 12.5px; }
+
+  /* ===== watermark: fills the empty part of the mode card, scales with it ===== */
+  .mode-card { display: flex; flex-direction: column; }
+  .wm { position: relative; flex: 1; min-height: 0; margin-top: 6px; container-type: size; }
+  .wm svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; }
+  @container (max-height: 140px) { .wm svg { display: none; } }
+  .wm .ring { fill: none; stroke: url(#wmg); stroke-width: 1.4; stroke-dasharray: 2 8; stroke-linecap: round;
+              transform-origin: 200px 200px; animation: wm-spin 80s linear infinite; }
+  .wm .ring:nth-child(even) { animation-direction: reverse; animation-duration: 110s; }
+  .wm .pill rect { fill: var(--bg2); stroke: url(#wmg); stroke-width: 1.2; }
+  .wm .pill text { fill: var(--text); font: 700 11px var(--mono); text-anchor: middle; dominant-baseline: central; }
+  .wm .dot { fill: url(#wmg); }
+  @keyframes wm-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .wm .ring { animation: none; } }
   pre { direction: ltr; text-align: left; font-size: 12px; overflow-x: auto; background: var(--input);
         padding: 10px; border-radius: 10px; max-height: 320px; }
 
@@ -165,7 +191,6 @@
     .results td.where { grid-column: 1 / -1; padding: 10px 12px; border-radius: 12px; background: var(--input); }
     .results td.cell { font-size: 13px; }
     .results td.cell::before { content: attr(data-label); display: block; font-size: 11px; color: var(--muted); margin-bottom: 1px; }
-    .results tr:has(details[open]) td.dom { grid-column: 1 / -1; }
   }
 
 .hp { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--stroke2); }
@@ -244,7 +269,7 @@ github.com</textarea>
         <p class="note" id="hpStatus"></p>
       </div>
     </section>
-    <section class="glass card">
+    <section class="glass card mode-card">
       <h2 id="modeTitle"></h2>
       <p class="note" id="modeNote"></p>
       <div class="dl" id="dl" hidden>
@@ -253,6 +278,18 @@ github.com</textarea>
       </div>
       <p class="note"><a href="https://github.com/Plus98ir/Filter-Checker" target="_blank" rel="noopener" data-i="source"></a></p>
       <div class="hint" id="iosHint" hidden data-i="iosHint"></div>
+      <div class="wm" aria-hidden="true">
+        <svg viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
+          <defs><linearGradient id="wmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset=".55" stop-color="#60a5fa"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+          <g><circle class="ring" cx="200" cy="200" r="85"/><circle class="ring" cx="200" cy="200" r="110"/><circle class="ring" cx="200" cy="200" r="135"/><circle class="ring" cx="200" cy="200" r="160"/><circle class="ring" cx="200" cy="200" r="185"/></g>
+          <circle class="dot" cx="200" cy="200" r="58" opacity=".08"/>
+          <g transform="translate(129.6 131.8) scale(2.2)">
+            <path d="M32 10l17 6.5v13.5c0 10.5-7.2 18.8-17 22.5-9.8-3.7-17-12-17-22.5V16.5z" fill="url(#wmg)" fill-opacity=".14" stroke="url(#wmg)" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M24 31.5l5.5 5.5L41 25.5" fill="none" stroke="url(#wmg)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+          <g class="pill"><rect x="223.5" y="116.4" width="38" height="20" rx="10"/><text x="242.5" y="126.4">DNS</text></g><g class="pill"><rect x="81.6" y="152.4" width="30" height="20" rx="10"/><text x="96.6" y="162.4">IP</text></g><g class="pill"><rect x="297.9" y="257.5" width="38" height="20" rx="10"/><text x="316.9" y="267.5">SNI</text></g><g class="pill"><rect x="58.4" y="292.8" width="38" height="20" rx="10"/><text x="77.4" y="302.8">TLS</text></g><g class="pill"><rect x="144.9" y="7.8" width="46" height="20" rx="10"/><text x="167.9" y="17.8">HTTP</text></g>
+        </svg>
+      </div>
     </section>
   </div>
 
@@ -264,6 +301,14 @@ github.com</textarea>
   </div>
 
   <div class="legend" id="legend"></div>
+
+  <dialog id="dlg" aria-labelledby="dlgTitle">
+    <div class="dlg-head">
+      <b id="dlgTitle" dir="ltr"></b><span class="mid small" id="dlgSub"></span><span class="spacer"></span>
+      <button class="icon-btn" id="dlgClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <pre id="dlgBody"></pre>
+  </dialog>
 
   <footer><span data-i="built"></span> <a href="https://plus98ir.dpdns.org/" target="_blank" rel="noopener">PLUS98IR</a></footer>
 </main>
@@ -473,15 +518,28 @@ function renderRow(row) {
     return;
   }
   if (r.error) { tr.innerHTML = `<td class="dom">${esc(domain)}</td><td class="where" colspan="${span}">${mark(false, r.error)}</td>`; return; }
-  const v = VERDICT_CLS[r.verdict] ? r.verdict : "unknown";
+  const v = VERDICT_CLS[r.verdict] ? r.verdict : "unknown", role = roles[r.domain];
   tr.innerHTML = `
-    <td class="dom">${esc(r.domain)}${roles[r.domain] ? `<div><span class="role ${roles[r.domain]}">${esc(t("role_" + roles[r.domain]))}</span></div>` : ""}
-      ${roles[r.domain] && v === "blocked" ? `<div class="advice">${esc(t("adv_" + roles[r.domain]))}</div>` : ""}
-      <details><summary>${t("details")} · ${r.elapsed_ms}ms</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details></td>
+    <td class="dom">${esc(r.domain)}
+      <div class="dom-meta">${role ? `<span class="role ${role}">${esc(t("role_" + role))}</span>` : ""}<button class="more" data-row="${rows.indexOf(row)}">${t("details")} · <bdi>${r.elapsed_ms}ms</bdi></button></div>
+      ${role && v === "blocked" ? `<div class="advice">${esc(t("adv_" + role))}</div>` : ""}</td>
     <td class="verdict"><span class="badge ${VERDICT_CLS[v]}">${t("v_" + v)}</span></td>
     <td class="where${r.issues.length ? "" : " none"}">${issuesCell(r)}</td>` +
     cols.slice(3).map(([k, fn]) => `<td class="cell" data-label="${esc(t(k))}">${fn(r)}</td>`).join("");
 }
+
+/* ===== details window ===== */
+const dlg = $("#dlg");
+$("#body").addEventListener("click", e => {
+  const row = rows[e.target.closest(".more")?.dataset.row];
+  if (!row?.result) return;
+  $("#dlgTitle").textContent = row.result.domain;
+  $("#dlgSub").textContent = `${t("details")} · ${row.result.elapsed_ms}ms`;
+  $("#dlgBody").textContent = JSON.stringify(row.result, null, 2);
+  dlg.showModal();
+});
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });  // the backdrop
+$("#dlgClose").addEventListener("click", () => dlg.close());
 
 /* ===== web-mode checks (faghat browser) ===== */
 // Avval ruye IP ta DNS-e operator dar resolve-e khod-e DoH dakhalat nakone
