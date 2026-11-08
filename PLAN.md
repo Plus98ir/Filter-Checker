@@ -11,4 +11,4 @@ Tell whether a website is filtered and exactly where the interference is (DNS, I
 ## Decisions (Sadeq)
 - Pages full-width, glass theme, FA + EN.
 - No cmd window: server opens with the page and closes when the page closes.
-- PWA lives on the main site (plus98ir.dpdns.org) so it can be installed and used live on the phone.
+- PWA lives on the main site (corenetbase.com) so it can be installed and used live on the phone.

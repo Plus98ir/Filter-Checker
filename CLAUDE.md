@@ -1,7 +1,7 @@
 # Filter-Checker — CLAUDE.md
 _Updated 2026-10-27_
 
-Tool that checks whether a website is filtered (Iran) and on which layer: DNS, IP, SNI, TLS, HTTP. Repo: GitHub Plus98ir/Filter-Checker. Live PWA: https://plus98ir.dpdns.org/Filter-Checker/ (GitHub Pages, main branch root).
+Tool that checks whether a website is filtered (Iran) and on which layer: DNS, IP, SNI, TLS, HTTP. Repo: GitHub Plus98ir/Filter-Checker. Live PWA: https://corenetbase.com/Filter-Checker/ (GitHub Pages, main branch root).
 
 ## Key facts
 - `server.py` = full mode (Python stdlib only). Serves `index.html` + PWA files and `/api/check`, `/api/ping`, `/api/bye`.

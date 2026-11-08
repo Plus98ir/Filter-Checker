@@ -9,7 +9,7 @@ python server.py               # UI: http://127.0.0.1:8080
 python server.py check x.com   # khoruji JSON dar terminal
 ```
 
-Neskhe-ye web / PWA (nasb ruye gushi): https://plus98ir.dpdns.org/Filter-Checker/
+Neskhe-ye web / PWA (nasb ruye gushi): https://corenetbase.com/Filter-Checker/
 Browser test-e mostaghim-e TCP/SNI nemitune bokone; neskhe-ye web faghat mige site az hamun dastgah baz mishe ya na, va age na, block ruye IP e ya ruye esm-e domain (DNS/SNI). Baraye tashkhis-e daghigh-e laye, `server.py` ro ruye PC ejra kon.
 
 ## Che chizi test mishe
