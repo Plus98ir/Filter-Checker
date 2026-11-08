@@ -1,6 +1,6 @@
 # Filter Checker
 
-<a href="https://hits.sh/github.com/Plus98ir/Filter-Checker/"><img src="https://hits.sh/github.com/Plus98ir/Filter-Checker.svg?style=for-the-badge&label=views&color=2563eb" alt="Views"></a>
+<a href="https://hits.sh/github.com/Plus98ir/Filter-Checker/"><img src="https://hits.sh/github.com/Plus98ir/Filter-Checker.svg?style=for-the-badge&label=views&color=2563eb" alt="Views"></a> <a href="https://corenetbase.com/#support"><img src="https://img.shields.io/badge/support-buy%20me%20a%20coffee-e11d2a?style=for-the-badge&logo=buymeacoffee&logoColor=white" alt="Support"></a>
 
 Tashkhis inke ye site filter shode ya na. Faghat Python 3.10+ lazem dare (bedune pip install).
 
