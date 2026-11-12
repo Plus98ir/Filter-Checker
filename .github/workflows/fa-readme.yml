@@ -1,0 +1,24 @@
+name: Persian README branch
+# Keeps branch "fa" = main with the Persian README, so
+# github.com/Plus98ir/Filter-Checker/tree/fa looks exactly like the repo home page.
+on:
+  push:
+    branches: [main]
+    paths: [".github/fa.md", "README.md", ".github/workflows/fa-readme.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build branch fa
+        run: |
+          git config user.name "PluS98"
+          git config user.email "senator.ms90@gmail.com"
+          git checkout -B fa
+          cp .github/fa.md README.md
+          git add README.md
+          git commit -m "Persian README (built from main)"
+          git push -f origin fa
